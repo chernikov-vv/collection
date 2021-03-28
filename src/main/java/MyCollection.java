@@ -39,8 +39,14 @@ public class MyCollection<E> implements Collection<E> {
     @Override
     public boolean contains(final Object o) {
         while (it.hasNext()) {
-            if (it.next().equals(o)) {
-                return true;
+            try {
+                if (it.next().equals(o)) {
+                    return true;
+                }
+            } catch (NullPointerException e) {
+                if (elementData[it.cursor - 1] == o) {
+                    return true;
+                }
             }
         }
         return false;
@@ -59,7 +65,10 @@ public class MyCollection<E> implements Collection<E> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> T[] toArray(final T[] a) {
+    public <T> T[] toArray(T[] a) {
+        if (a.length < size) {
+            a = Arrays.copyOf(a, size);
+        }
         for (int i = 0; i < a.length; i++) {
             if (it.hasNext()) {
                 a[i] = (T) it.next();
@@ -71,9 +80,18 @@ public class MyCollection<E> implements Collection<E> {
     @Override
     public boolean remove(final Object o) {
         while (it.hasNext()) {
-            if (it.next().equals(o)) {
-                it.remove();
-                return true;
+            try {
+                if (it.next().equals(o)) {
+                    it.remove();
+                    it.cursor++;
+                    return true;
+                }
+            } catch (NullPointerException e) {
+                if (elementData[it.cursor - 1] == o) {
+                    it.remove();
+                    it.cursor++;
+                    return true;
+                }
             }
         }
         return false;
@@ -81,12 +99,14 @@ public class MyCollection<E> implements Collection<E> {
 
     @Override
     public boolean containsAll(final Collection<?> c) {
+        boolean flag = true;
         for (Object o : c) {
+            it.cursor = 0;
             if (!contains(o)) {
-                return false;
+                flag = false;
             }
         }
-        return true;
+        return flag;
     }
 
     @Override
@@ -99,21 +119,30 @@ public class MyCollection<E> implements Collection<E> {
 
     @Override
     public boolean removeAll(final Collection<?> c) {
+        final int START_SIZE = size;
         for (Object o : c) {
             while (it.hasNext()) {
-                if (it.next().equals(o)) {
-                    it.remove();
-                    it.isNext = true;
+                try {
+                    if (it.next().equals(o)) {
+                        it.remove();
+                        it.cursor++;
+                        it.isNext = true;
+                    }
+                } catch (NullPointerException e) {
+                    if (elementData[it.cursor - 1] == o) {
+                        it.remove();
+                        it.cursor++;
+                        it.isNext = true;
+                    }
                 }
             }
             it.cursor = 0;
         }
-        return false;
+        return START_SIZE != size;
     }
 
     @Override
     public boolean retainAll(final Collection<?> c) {
-
         while (it.hasNext()) {
             boolean flag = true;
             it.next();
@@ -129,7 +158,6 @@ public class MyCollection<E> implements Collection<E> {
             if (!flag) {
                 it.isNext = true;
                 it.remove();
-                it.cursor--;
             }
         }
         return true;
@@ -170,6 +198,7 @@ public class MyCollection<E> implements Collection<E> {
                     }
                 }
                 size--;
+                cursor--;
             } else {
                 throw new IllegalStateException();
             }
